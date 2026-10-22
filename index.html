@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Directorio & CRM de Empresas - Teléfonos con Nombre y Cargo (1 a 99)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .badge-status { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 600; }
+        .status-pendiente { background-color: #FEF3C7; color: #92400E; }
+        .status-espera { background-color: #E0F2FE; color: #075985; }
+        .status-negociacion { background-color: #FCE7F3; color: #9D174D; }
+        .status-apto { background-color: #D1FAE5; color: #065F46; }
+        .status-descartado { background-color: #FEE2E2; color: #991B1B; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-16">
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-building-user text-amber-400 text-3xl"></i>
+                <div>
+                    <h1 class="text-xl font-bold leading-tight">Directorio & CRM de Empresas</h1>
+                    <p class="text-xs text-slate-400">Energía, Petróleo, Naval & Servicios Industriales (Empresas 1 a 99)</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="openSectorModal()" class="px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm rounded shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie"></i> Resumen por Sector
+                </button>
+                <button onclick="exportData()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm rounded border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> Respaldar (JSON)
+                </button>
+                <button onclick="openModal()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold text-sm rounded shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle"></i> Añadir Empresa
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 mt-6">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 text-center">
+                <span class="block text-2xl font-bold text-slate-800" id="kpi-total">0</span>
+                <span class="text-xs text-slate-500 uppercase font-semibold">Total Registros</span>
+            </div>
+            <div class="bg-amber-50 p-3 rounded-lg shadow-sm border border-amber-200 text-center">
+                <span class="block text-2xl font-bold text-amber-700" id="kpi-pendiente">0</span>
+                <span class="text-xs text-amber-700 uppercase font-semibold">Pendientes</span>
+            </div>
+            <div class="bg-sky-50 p-3 rounded-lg shadow-sm border border-sky-200 text-center">
+                <span class="block text-2xl font-bold text-sky-700" id="kpi-negociacion">0</span>
+                <span class="text-xs text-sky-700 uppercase font-semibold">En Negociación</span>
+            </div>
+            <div class="bg-emerald-50 p-3 rounded-lg shadow-sm border border-emerald-200 text-center">
+                <span class="block text-2xl font-bold text-emerald-700" id="kpi-apto">0</span>
+                <span class="text-xs text-emerald-700 uppercase font-semibold">Evaluado - Apto</span>
+            </div>
+            <div class="bg-rose-50 p-3 rounded-lg shadow-sm border border-rose-200 text-center">
+                <span class="block text-2xl font-bold text-rose-700" id="kpi-descartado">0</span>
+                <span class="text-xs text-rose-700 uppercase font-semibold">Descartados</span>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-4 flex flex-col md:flex-row gap-3">
+            <div class="flex-1 relative">
+                <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400"></i>
+                <input type="text" id="searchInput" oninput="renderData()" placeholder="Buscar por empresa, contacto, servicio o palabras clave..." class="w-full pl-9 pr-4 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div class="w-full md:w-56">
+                <select id="filterSector" onchange="renderData()" class="w-full py-2 px-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <option value="">Todos los Sectores</option>
+                </select>
+            </div>
+            <div class="w-full md:w-56">
+                <select id="filterStatus" onchange="renderData()" class="w-full py-2 px-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <option value="">Todos los Estatus</option>
+                    <option value="Pendiente Contactar">Pendiente Contactar</option>
+                    <option value="Contactado - En espera">Contactado - En espera</option>
+                    <option value="En negociación">En negociación</option>
+                    <option value="Evaluado - Apto">Evaluado - Apto</option>
+                    <option value="Descartado">Descartado</option>
+                </select>
+            </div>
+            <div class="w-full md:w-48">
+                <select id="filterRating" onchange="renderData()" class="w-full py-2 px-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <option value="">Todas las Calificaciones</option>
+                    <option value="5">5 ⭐ (Excelente)</option>
+                    <option value="4">4 ⭐ (Bueno)</option>
+                    <option value="3">3 ⭐ (Regular)</option>
+                    <option value="2">2 ⭐ (Insuficiente)</option>
+                    <option value="1">1 ⭐ (No recomendado)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="bg-slate-800 text-white p-3 rounded-lg shadow-sm mb-6 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <label class="inline-flex items-center gap-2 cursor-pointer text-sm font-semibold">
+                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" class="w-4 h-4 text-amber-500 rounded focus:ring-amber-400">
+                    <span>Seleccionar todas las visibles</span>
+                </label>
+                <span class="text-xs text-slate-400 border-l border-slate-600 pl-3" id="selectedCount">0 seleccionadas</span>
+            </div>
+            <div>
+                <button onclick="deleteSelected()" id="btnDeleteSelected" disabled class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-xs font-bold rounded transition flex items-center gap-2">
+                    <i class="fa-solid fa-trash-can"></i> Eliminar seleccionadas
+                </button>
+            </div>
+        </div>
+
+        <div id="companyGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    </main>
+
+    <!-- Modal Resumen por Sector -->
+    <div id="sectorModal" class="fixed inset-0 bg-black/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 overflow-hidden">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-chart-pie text-sky-400"></i> Resumen de Empresas por Sector</h3>
+                <button onclick="closeSectorModal()" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 max-h-[70vh] overflow-y-auto">
+                <div id="sectorSummaryContent" class="space-y-3">
+                    <!-- Dinámico -->
+                </div>
+            </div>
+            <div class="bg-slate-50 px-6 py-3 border-t flex justify-end">
+                <button onclick="closeSectorModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded text-sm">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Añadir/Editar Empresa -->
+    <div id="modal" class="fixed inset-0 bg-black/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 overflow-hidden">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold" id="modalTitle">Añadir Nueva Empresa</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-times"></i></button>
+            </div>
+
+            <form id="companyForm" onsubmit="saveCompany(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="empresaId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nombre de la Empresa *</label>
+                        <input type="text" id="nombre" required class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Sector / Categoría</label>
+                        <input type="text" id="sector" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Producto / Servicio Específico</label>
+                    <textarea id="producto" rows="2" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Ubicación / País / Puerto</label>
+                    <input type="text" id="ubicacion" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <!-- Sección Múltiples Teléfonos con Nombre y Cargo -->
+                <div class="bg-emerald-50/50 p-4 rounded-lg border border-emerald-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold text-emerald-900 uppercase">Teléfonos con Nombre y Cargo</label>
+                        <button type="button" onclick="addPhoneField()" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Añadir Teléfono
+                        </button>
+                    </div>
+                    <div id="phonesContainer" class="space-y-3">
+                        <!-- Dinámico -->
+                    </div>
+                </div>
+
+                <!-- Sección Múltiples Correos -->
+                <div class="bg-sky-50/50 p-4 rounded-lg border border-sky-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold text-sky-900 uppercase">Correos Electrónicos</label>
+                        <button type="button" onclick="addEmailField()" class="px-2 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-xs font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Añadir Correo
+                        </button>
+                    </div>
+                    <div id="emailsContainer" class="space-y-2">
+                        <!-- Dinámico -->
+                    </div>
+                </div>
+
+                <!-- Sección Múltiples Páginas Web -->
+                <div class="bg-amber-50/50 p-4 rounded-lg border border-amber-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold text-amber-900 uppercase">Páginas Web</label>
+                        <button type="button" onclick="addWebField()" class="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Añadir Web
+                        </button>
+                    </div>
+                    <div id="websContainer" class="space-y-2">
+                        <!-- Dinámico -->
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Servicio / Tipo Requerido</label>
+                        <input type="text" id="servicio_interes" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Estatus de Evaluación</label>
+                        <select id="estatus" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500">
+                            <option value="Pendiente Contactar">Pendiente Contactar</option>
+                            <option value="Contactado - En espera">Contactado - En espera</option>
+                            <option value="En negociación">En negociación</option>
+                            <option value="Evaluado - Apto">Evaluado - Apto</option>
+                            <option value="Descartado">Descartado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Fecha de Contacto</label>
+                        <input type="text" id="fecha_contacto" placeholder="DD/MM/AAAA" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Valoración / Calificación</label>
+                        <select id="valoracion" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500">
+                            <option value="">Sin calificar</option>
+                            <option value="5">5 - Excelente</option>
+                            <option value="4">4 - Bueno</option>
+                            <option value="3">3 - Regular</option>
+                            <option value="2">2 - Insuficiente</option>
+                            <option value="1">1 - No recomendado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Siguiente Acción Requerida</label>
+                    <input type="text" id="siguiente_accion" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Notas y Observaciones</label>
+                    <textarea id="notas" rows="3" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Añadir Archivos Adjuntos (PDF, JPG, PNG)</label>
+                    <input type="file" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border text-slate-600 rounded text-sm hover:bg-slate-50">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded text-sm shadow">Guardar Empresa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const initialCompanies = [{"id": 1, "nombre": "American Lucor", "sector": "Gabarras", "producto": "Distribución de equipos reconstruidos para la industria petrolera: Unidades de coil tubing, tubería flexible, venta de unidades nuevas y usadas, restauración de unidades, servicios de repotenciación, venta de bombas de nitrógeno, unidades offshore y terrestres.", "contacto": "G Coronado", "cargo": "Director", "telefonos": [{"telefono": "8322651570", "nombre": "G Coronado", "cargo": "Director"}, {"telefono": "+584126230559", "nombre": "", "cargo": ""}], "webs": ["www.americanlucor.com"], "correos": ["sales@americanlucor.com", "rafaelnavarro@americanlucor.com"], "ubicacion": "Zona Ind, Caracas. Venezuela", "servicio_interes": "Venta de gabarras", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 2, "nombre": "MP International", "sector": "Generadores", "producto": "Venta de generadores eléctricos", "contacto": "Rafael Guedez", "cargo": "Director global de negocios", "telefonos": [], "webs": ["www.wpi-intl.com"], "correos": ["rguedez@wpi-intl.com"], "ubicacion": "Zona Ind. II, Maracaibo. Venezuela", "servicio_interes": "Generadores marítimos", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 3, "nombre": "APASOF", "sector": "Motores y partes", "producto": "Distribuidor autorizado de Perkins para Venezuela. Suministro de motores, repuestos originales, soluciones de potencia y servicio técnico especializado con cobertura en EEUU y Latinoamérica. + Donaldson, CAT", "contacto": "Oficina\nAlejandro Valbuena", "cargo": "Oficina\nGerente de ventas", "telefonos": [{"telefono": "+582613350961", "nombre": "Oficina\nAlejandro Valbuena", "cargo": "Oficina\nGerente de ventas"}, {"telefono": "+584146310818", "nombre": "", "cargo": ""}], "webs": ["www.apasof.com", "www.aparts.apasof.com"], "correos": ["contacto.ve@apasof.com"], "ubicacion": "Workin Business Center, Maracaibo. Venezuela\nDoral, Florida. USA", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 4, "nombre": "Montevideo Industrial", "sector": "General / Sin Sector", "producto": "Soldadura y ferreteria industrial", "contacto": "Nixon Mora", "cargo": "Asesor Comercial", "telefonos": [{"telefono": "+584245941705", "nombre": "Nixon Mora", "cargo": "Asesor Comercial"}], "webs": ["www.montevideoindustrial.com.ve"], "correos": ["nmora@montevideoindustrial.com.uy"], "ubicacion": "", "servicio_interes": "Quieren coordinar visita en instalaciones", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 5, "nombre": "Alcave", "sector": "Cables", "producto": "Soluciones de cableado para la generación eléctrica, petroleo y gas, líneas de transmisión, electrificadoras, construcción, industrial, automotriz", "contacto": "", "cargo": "", "telefonos": [], "webs": ["www.alcavevzla.biz"], "correos": ["ventas@alcave.biz"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 6, "nombre": "Codinter", "sector": "Maquinas de soldar, partes y consumibles", "producto": "Tortugas de soldadura y corte, taladros magnéticos, biselados de placas y tuberias, punzonadoras hidráulicas, materiales de aporte, accesorios de soldadura, consumibles de soladura, productos de seguridad, equipos de corte manuales, consumibles de cortes, accesorios de corte, oxicorte, maquinas de soldar,", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584244141923", "nombre": "", "cargo": ""}], "webs": ["www.codinter.com"], "correos": ["ventas@codinter.com"], "ubicacion": "Santa Rita, Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "Registro Lead Feria", "attachments": []}, {"id": 7, "nombre": "Bramos international inc.", "sector": "Procura internacional", "producto": "Soluciones de procura industrial, exportación y logística global", "contacto": "Johanna Koopmans", "cargo": "Director of engineering and technical services", "telefonos": [{"telefono": "+13462326135", "nombre": "Johanna Koopmans", "cargo": "Director of engineering and technical services"}, {"telefono": "+17864096896", "nombre": "", "cargo": ""}], "webs": ["www.bramosint.com"], "correos": ["jkoopmans@bramosint.com", "info@bramosint.com"], "ubicacion": "Medley, Florida. USA", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 8, "nombre": "Tuboacero", "sector": "Tuberías de acero", "producto": "Transporte, revestimiento, marcaje y estencilado, limpieza mecánica, importación, almacenamiento y manejo de tuberias de acero", "contacto": "José Toro", "cargo": "Ventas y Compras corporativas", "telefonos": [{"telefono": "+582122868322", "nombre": "José Toro", "cargo": "Ventas y Compras corporativas"}, {"telefono": "+584126238634", "nombre": "", "cargo": ""}], "webs": ["www.tuboacero.com"], "correos": ["comprasop2@tuboacero.com", "ventasccs1@tuboacero.com"], "ubicacion": "Cabimas\nUrb. Los Palos Grandes, Caracas. Venezuela\nValencia\nPto La Cruz", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 9, "nombre": "Geotekh", "sector": "General / Sin Sector", "producto": "Desarrollo y fabricación de herramientas y equipos modernos para la investigación de pozos durante la perforación y operación de yacimientos de petróleo y gas", "contacto": "Carlos Schoeps", "cargo": "Representative for Latin America", "telefonos": [{"telefono": "+584121686711", "nombre": "Carlos Schoeps", "cargo": "Representative for Latin America"}], "webs": ["https://www.geotekh.ru/", "https://disk.yandex.ru/d/Z27equo9F3MFxA?ncrnd=4627"], "correos": ["carlos_s@geotekh.ru"], "ubicacion": "Russian Federation", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 10, "nombre": "Elolam", "sector": "Tuberías especiales", "producto": "Tuberías especiales bajo normas internacionales", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584123314392", "nombre": "", "cargo": ""}, {"telefono": "+584244559878", "nombre": "", "cargo": ""}], "webs": ["https://elolamca.com/index.php"], "correos": ["comercial@elolamca.com"], "ubicacion": "Valencia, Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 11, "nombre": "ATH Enterprises", "sector": "Equipos, maquinaria y suministros industriales", "producto": "Equipos, maquinaria y suministros industriales: división petrolera, división eléctrica, división de soldadura industrial", "contacto": "Dr hugo Urribarrí\nAndreina Padilla", "cargo": "Presidente\nGerente", "telefonos": [{"telefono": "+17868901717", "nombre": "Dr hugo Urribarrí\nAndreina Padilla", "cargo": "Presidente\nGerente"}, {"telefono": "+5841227721701", "nombre": "", "cargo": ""}], "webs": ["www.ath-enterprises.com"], "correos": ["info@ath-enterprises.com", "hugo.urribarri@ath-enterprises.com", "andreina.padilla@ath-enterprises.com"], "ubicacion": "Miami FL. USA", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 12, "nombre": "Semirca", "sector": "Cortes, soldadura y energía", "producto": "Electrodos comunes y especiales, alambres solidos y tubulares, motosoldadoras e inversores, seguimiento remoto", "contacto": "Andry Franco\nHerbie Quero", "cargo": "", "telefonos": [{"telefono": "+584246669672 (A. Franco)", "nombre": "Andry Franco\nHerbie Quero", "cargo": ""}, {"telefono": "+584146912930 (whatsApp)", "nombre": "", "cargo": ""}, {"telefono": "+584246669687", "nombre": "", "cargo": ""}], "webs": ["www.semirca.com"], "correos": ["andry.franco@semirca.com", "ventas@semirca.com", "herbie.quero@semirca.com"], "ubicacion": "San Fco, Zulia. Venezuela (Andry Franco)\nC. Ojeda, Zulia. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 13, "nombre": "AVECO", "sector": "Ingeniería y control", "producto": "MUD logging (geología de superficie con análisis continuo), parámetros de perforación (captura, adquisición y análisis), monitoreo en tiempo real", "contacto": "Henry Moncada", "cargo": "Gerente de operaciones", "telefonos": [{"telefono": "+584149679677", "nombre": "Henry Moncada", "cargo": "Gerente de operaciones"}, {"telefono": "+584146509465", "nombre": "", "cargo": ""}], "webs": ["www.aveco.com.ve"], "correos": ["info@aveco.com.ve", "hmoncada@aveco.com.ve"], "ubicacion": "Urb Doral norte, Maracaibo. Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 14, "nombre": "Arcoweld", "sector": "Herramientas y soluciones industriales", "producto": "", "contacto": "", "cargo": "", "telefonos": [], "webs": ["www.arcoweld.com"], "correos": [], "ubicacion": "Av Los Haticos, Maracaibo. Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 15, "nombre": "Hermaco", "sector": "Maquinarias y herramientas", "producto": "Herramientas manuales, eléctricas, hidráulicas y neumáticas para toda aplicación; equipos y accesorios para soldar y cortar; equipos para el tratamiento y preparación de superficies; equipos para pintar, delinear o acabados arquitectonicos; equipos para control de corrosión; equipos y accesorios de lubricación masiva y específica; Bombas para mover fluidos de todo tipo; Equipos de izamiento...", "contacto": "", "cargo": "Asesor de ventas", "telefonos": [{"telefono": "+584246419965", "nombre": "", "cargo": "Asesor de ventas"}, {"telefono": "+584246429296", "nombre": "", "cargo": ""}], "webs": ["www.hermaco.com.ve"], "correos": ["hermacoventas@gmail.com", "ventas@hermaco.com.ve"], "ubicacion": "C. Ojeda, Zulia. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 16, "nombre": "Jarbo Services C.A.", "sector": "General / Sin Sector", "producto": "Servicios: ingeniería, operaciones de lodo, procura, logística, mantenimiento, instrumentación.\nProductos: protección ambiental, protección vial, equipo de protección personal, equipos de detección, arco eléctrico, suministros industriales.", "contacto": "Lic. Catalina Bautista", "cargo": "", "telefonos": [{"telefono": "+584146182015", "nombre": "Lic. Catalina Bautista", "cargo": ""}, {"telefono": "+584146849958", "nombre": "", "cargo": ""}], "webs": [], "correos": ["jarboservicesca@gmail.com"], "ubicacion": "Maracaibo, Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 17, "nombre": "RNPI", "sector": "General / Sin Sector", "producto": "Embarcaciones, partes, apagafuegos", "contacto": "Lic. Alirio E. González Bravo", "cargo": "", "telefonos": [{"telefono": "+584143615837", "nombre": "Lic. Alirio E. González Bravo", "cargo": ""}, {"telefono": "+584143603302", "nombre": "", "cargo": ""}], "webs": [], "correos": ["aliriogonzalez77@gmail.com", "rnpi.yaritza@gmail.com"], "ubicacion": "Santa Rita, Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 18, "nombre": "Constructora Con Furca", "sector": "Ingeniería, procura y construcción", "producto": "", "contacto": "", "cargo": "", "telefonos": [], "webs": ["www.confurca.com.ve"], "correos": ["confurcasedeprincipal@confurca.com.ve"], "ubicacion": "C. Ojeda, Zulia. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 19, "nombre": "Molecular de Occidente", "sector": "Pinturas y recubrimientos", "producto": "", "contacto": "Juan Galiz", "cargo": "Director", "telefonos": [{"telefono": "+584146397994", "nombre": "Juan Galiz", "cargo": "Director"}], "webs": ["www.moleoca.com", "www.belzona.com"], "correos": ["jgaliz@moleoca.com"], "ubicacion": "Maracaibo, Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 20, "nombre": "Pinturas international", "sector": "Pinturas y recubrimientos", "producto": "Industriales y marinos", "contacto": "Luis A. Gómez J.", "cargo": "Jefe de negocios de PICA", "telefonos": [{"telefono": "+584145842517", "nombre": "Luis A. Gómez J.", "cargo": "Jefe de negocios de PICA"}], "webs": ["www.pinturasinternational.com"], "correos": ["luis.gomez@venezolanadepinturas.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 21, "nombre": "Febeca", "sector": "Ferretería", "producto": "Distribuidor autorizado de Lincoln Electric: Electrodos revestidos, alambres y fundentes, equipos motosoldadores, equipos para electrodo revestido", "contacto": "Luisa Cabrera", "cargo": "Jefe de ventas", "telefonos": [{"telefono": "+584220284824", "nombre": "Luisa Cabrera", "cargo": "Jefe de ventas"}], "webs": ["www.febeca.com"], "correos": ["lcabrera@febeca.com"], "ubicacion": "Valencia, Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 22, "nombre": "EDJ Services", "sector": "Seguridad Industrial", "producto": "EPP importado", "contacto": "Mikel Dalsass", "cargo": "Gerente comercial", "telefonos": [{"telefono": "+584224904480", "nombre": "Mikel Dalsass", "cargo": "Gerente comercial"}], "webs": ["www.edjgroup.net"], "correos": ["salacomercial@edjgroup.net"], "ubicacion": "Caracas, Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 23, "nombre": "Time Market", "sector": "Impresiones, publicidad, stands, material POP", "producto": "", "contacto": "Lic Karim Sabe", "cargo": "CEO", "telefonos": [{"telefono": "+584146215918", "nombre": "Lic Karim Sabe", "cargo": "CEO"}, {"telefono": "+584226660006", "nombre": "", "cargo": ""}], "webs": [], "correos": ["timemarketvzla@gmail.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 24, "nombre": "Representaciones Barcan", "sector": "Revestimiento, tuberías y accesorios, mantenimiento, SHA", "producto": "Comercializamos de manera exclusiva marcas para el mantenimiento y tendido de líneas; revestimientos; seguridad, higiene y ambiente; y tubería y accesorios.", "contacto": "Belky Villaroel", "cargo": "Gerencia Región Occidente", "telefonos": [{"telefono": "+584123342375", "nombre": "Belky Villaroel", "cargo": "Gerencia Región Occidente"}], "webs": ["https://barcan.com/"], "correos": [], "ubicacion": "", "servicio_interes": "Partes de barcaza, recubrimientos de lancha", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 25, "nombre": "MASIA group", "sector": "Compresores", "producto": "Compresor de aire a tornillo de alta eficiencia", "contacto": "", "cargo": "Asesor técnico", "telefonos": [{"telefono": "+584146274282", "nombre": "", "cargo": "Asesor técnico"}], "webs": ["www.masiagroup.com"], "correos": ["info@masiagroup.com"], "ubicacion": "Zona Ind. I, Maracaibo. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 26, "nombre": "Dispelca", "sector": "Válvulas y conexiones", "producto": "", "contacto": "", "cargo": "", "telefonos": [], "webs": [], "correos": [], "ubicacion": "San Fco, Zulia. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 27, "nombre": "Shell", "sector": "General / Sin Sector", "producto": "", "contacto": "", "cargo": "", "telefonos": [], "webs": [], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 28, "nombre": "Sipheca", "sector": "Seguridad Industrial", "producto": "EPP, Fabricantes de botas SAGA", "contacto": "Andrés Herrera", "cargo": "Gerente de compras y finanzas", "telefonos": [{"telefono": "+584246800560", "nombre": "Andrés Herrera", "cargo": "Gerente de compras y finanzas"}], "webs": ["www.sipheca.com"], "correos": ["andresherrera@sipheca.com", "info@sipheca.com"], "ubicacion": "Maracaibo", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 29, "nombre": "RIMES Electro mecánica C.A.", "sector": "Reparación industrial de máquinas eléctricas rotativas y servicios", "producto": "Reparacion de maquinas de soldar, ventas de aluminio", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584246425938", "nombre": "", "cargo": ""}], "webs": ["www.rimes.com.ve"], "correos": ["info@rimes.com.ve"], "ubicacion": "C. Ojeda, Zulia. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 30, "nombre": "Simsa", "sector": "Análisis químicos", "producto": "Estimulación de Pozos Petroleros y Tratamiento Químico en Superficie\nLaboratorio de Ensayos Fisicoquímicos de Crudo y Productos Químicos\nLaboratorio de Cromatografía de Gas\nLaboratorio de Ensayos Fisicoquímicos de Agua y Alimentos", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+58 424-6599946", "nombre": "", "cargo": ""}, {"telefono": "+58 412-2628789", "nombre": "", "cargo": ""}], "webs": ["https://simsadevenezuela.com/"], "correos": ["ventas@simsadevenezuela.com", "ingenierodeaplicaciones@simsadevenezuela.com"], "ubicacion": "Tía Juana\nLaboratorio móvil", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 31, "nombre": "Krill Energy", "sector": "Sistemas de respaldo energético", "producto": "Soluciones inteligentes de energía esencial", "contacto": "Alexis Bracho", "cargo": "", "telefonos": [{"telefono": "+584144404672", "nombre": "Alexis Bracho", "cargo": ""}, {"telefono": "+582129632456", "nombre": "", "cargo": ""}], "webs": ["krillenergy.com"], "correos": ["alexis.bracho@krillenergy.com", "ventas@krillenergy"], "ubicacion": "Panamá\nCaracas, Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 32, "nombre": "Avenrut", "sector": "Venta de gases", "producto": "Mantenimiento de tanques estacionarios criogénicos\nMantenimientos en tráiler criogénicos\nIngeniería\nVenta y distribución de nitrógeno\nDistribución de gases especiales\nLaboratorio para mezclas especiales\nSuministro de personal especializado", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584246596660 (0800AVENRUT)", "nombre": "", "cargo": ""}, {"telefono": "+584246573284", "nombre": "", "cargo": ""}, {"telefono": "+584246123238", "nombre": "", "cargo": ""}, {"telefono": "+584241681114", "nombre": "", "cargo": ""}], "webs": ["https://avenrut.com/"], "correos": ["contacto@avenrut.com", "ventas@avenrut.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 33, "nombre": "New Holland Construction", "sector": "General / Sin Sector", "producto": "", "contacto": "Flavio Lorenzi", "cargo": "", "telefonos": [{"telefono": "+584143502449", "nombre": "Flavio Lorenzi", "cargo": ""}], "webs": [], "correos": ["flavio.lorenzi@lorenzi.com.ve"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 34, "nombre": "Tumaca", "sector": "Transporte y distribución de hidrocarburos", "producto": "Distribuidora de diesel, gasolina, kerosene y lubricantes", "contacto": "Ing. Diafleric Manzano", "cargo": "", "telefonos": [{"telefono": "+584246697972", "nombre": "Ing. Diafleric Manzano", "cargo": ""}, {"telefono": "+584220403121", "nombre": "", "cargo": ""}], "webs": ["www.tumaca7.com"], "correos": ["ventascol.tumaca7@gmail.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 35, "nombre": "Sunimca", "sector": "Suministros nacionales e importados", "producto": "Importación y comercialización: Repuestos para mantenimiento preventivo y predictivo, Maquinarias y equipos nuevos y usados.", "contacto": "Jussepe Di Falco", "cargo": "Director general", "telefonos": [{"telefono": "0500 sunimca", "nombre": "Jussepe Di Falco", "cargo": "Director general"}, {"telefono": "+582617320078", "nombre": "", "cargo": ""}], "webs": ["www.sunimca.com"], "correos": ["jdifalco@sunimca.com"], "ubicacion": "El Vigia\nCumaná\nValencia \nMaracaibo", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 36, "nombre": "Interview group", "sector": "Seguro internacional", "producto": "", "contacto": "Ing. Gustavo Velasquez", "cargo": "Director general", "telefonos": [{"telefono": "+584122629420", "nombre": "Ing. Gustavo Velasquez", "cargo": "Director general"}, {"telefono": "+19548712120", "nombre": "", "cargo": ""}], "webs": [], "correos": ["gustavo.velasquez@gmail.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 37, "nombre": "Asesoría profesional en seguros", "sector": "Seguros", "producto": "Seguros de automovil, seguros de salud, seguro para el hogar, seguros para la empresa, seguros de vida", "contacto": "Evelin Colmenares\nDaniela Lopez", "cargo": "Agente de seguros\nCorredor de la actividad aseguradora", "telefonos": [{"telefono": "+584146438631", "nombre": "Evelin Colmenares\nDaniela Lopez", "cargo": "Agente de seguros\nCorredor de la actividad aseguradora"}, {"telefono": "+584246813488", "nombre": "", "cargo": ""}], "webs": [], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 38, "nombre": "Equimavenca", "sector": "Fabricantes de válvulas, instalacion sistemas de bombeo, ingeniería qca", "producto": "Fabricante nacional de:\nválvulas de gas lift\nválvulas aguja y manifolds\nválvulas control tipo choke\nInstalación BCP\nConexiones, componentes\nInstrumentación\nIngeniería química aplicada para optimización de procesos", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584146338519", "nombre": "", "cargo": ""}], "webs": ["www.equimavenca.com"], "correos": ["contacto@equimavenca.com"], "ubicacion": "Ciudad Ojeda", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 39, "nombre": "Epoca", "sector": "Logística internacional", "producto": "Agenciamiento naviero, agenciamiento aduanal, consolidación de carga, asesoría técnica y legal", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584146433300", "nombre": "", "cargo": ""}], "webs": ["www.epo-ca-.com", "https://www.instagram.com/p/DDp2Xo4ynVK/"], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 40, "nombre": "TEMI", "sector": "Fabricante de metalmecánica y su integración eléctrica en tableros, subestaciones eléctricas y equipos de electrónica de potencia", "producto": "Servicios: de ingeniería, modernización de equipos, asistencias técnicas, sistemas de distribución y control de energía eléctrica, sistemas de electrónica industrial.\nIngeniería: conceptual, básica, detalle, estudios de carga, arranque de motores, desarrollos de app, desarrollo de piezas metalmecanica y calculos estructurales, para sistemas de distribucion y control de energía eléctrica y sistemas de electrónica industrial.\nMantenimiento especializado: actividades preventivas y correctivas de sistemas de distribucion y control de energia.", "contacto": "Lenmer Charmel", "cargo": "", "telefonos": [{"telefono": "+58 412-4443840", "nombre": "Lenmer Charmel", "cargo": ""}], "webs": ["www.grupotemi.com"], "correos": [], "ubicacion": "Valencia, Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 41, "nombre": "Tubinca", "sector": "Subsuelo y superficie", "producto": "Inspección y ensayos no destructivos\nActividades de subsuelo y suministro de equipos\nIngeniería, construcción e infraestructura", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+58 412-7909243", "nombre": "", "cargo": ""}], "webs": ["www.tubincagroup.com"], "correos": ["operaciones@tubinca.com"], "ubicacion": "Anzoategui, Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 42, "nombre": "S&P consultores asociados C.A.", "sector": "Manejo integraL de eWaste\nSeguridad y salud en el trabajo\nGestión ambiental\nAsesoría y estudios\nFormación, educación y cumplimiento", "producto": "Recolección, transporte, almacenamiento, recuperación y disposición final de residuos de aparatos eléctricos y electrónicos, apegados a las normas nacionales", "contacto": "", "cargo": "", "telefonos": [], "webs": [], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 43, "nombre": "Midland", "sector": "Equipos, herramientas y consumibles para operaciones de perforación, workover y servicios a pozos.", "producto": "Llaves hidráulicas, cuñas manuales y pneumáticas, elevadores, llaves manuales, insertos, herramientas cabilleros, consumibles para bombas de lodo, válvulas y accesorios, productos de caucho, clutches y frenos, herramientas manuales, mantenimiento y operaciónes", "contacto": "Socrates Lara", "cargo": "Gerente de operaciones, Occidente y Llanos", "telefonos": [{"telefono": "+584244595722", "nombre": "Socrates Lara", "cargo": "Gerente de operaciones, Occidente y Llanos"}], "webs": ["www.midlandoilservices.com", "https://www.m-o-t.com/"], "correos": ["socrates.lara@midlandoilservices.com", "info@midlandoilservices.com", "sales@midlandoilservices.com"], "ubicacion": "Maracaibo\nCiudad Ojeda", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 44, "nombre": "Servolab", "sector": "Equipos de laboratorio", "producto": "Soluciones integrales para la industria energética: petróleo y gas", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+582127409025", "nombre": "", "cargo": ""}, {"telefono": "+584126969101", "nombre": "", "cargo": ""}], "webs": ["www.servolab.com.ve"], "correos": ["info@servolab.com.ve", "ventas@servolab.com.ve"], "ubicacion": "Caracas, Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 45, "nombre": "GMG", "sector": "Equipos, tecnología, integración", "producto": "Productos, equipos, ingeniería e integración de sistemas, fabricación y procura global, calidad, inspección y pruebas, instalación, comisionamiento y puesta en marcha, servicios para activos y campo.", "contacto": "", "cargo": "", "telefonos": [], "webs": ["www.gmgsupply.com"], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 46, "nombre": "CITGO", "sector": "Lubricantes", "producto": "Lubricantes para maquinaria pesada, vehículos de pasajeros o maquinaria especializada.", "contacto": "", "cargo": "", "telefonos": [{"telefono": "1-800-248-4684", "nombre": "", "cargo": ""}], "webs": ["www.citgo.com"], "correos": ["lubeshelp@CITGO.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 47, "nombre": "CVCONCA", "sector": "Mecánica\nInstrumentación y control\nServicios subacuáticos\nConstrucción o remodelación de obras civiles\nPotencia\nFlota de vehículos", "producto": "Servicios subacuáticos: servicios de inspección subacuática, limpieza de cascos, muelle, plataformas (herramientas manuales y mecánicas), ensayos no destructivos, medicion de espesores/potencia, batimetría a monoboyas (SPM), soldadura y corte subacuático, servicios de instalación y mantenimiento de tuberñias submarinas, reparaciones eléctricas y electrónicas, sistemas de control, reparaciones de bombas, sistemas hidráulicos y refrigeración, reparación generalizadas, mantenimiento de pintura, suministro de herramientas, equipos, repuestos, lubricantes, consumibles.", "contacto": "", "cargo": "", "telefonos": [], "webs": ["https://cvconca.com/"], "correos": ["info@cvconca.com"], "ubicacion": "El Tigre, Anzoátegui. Venezuela", "servicio_interes": "Servicios subacuáticos", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 48, "nombre": "CAMF INC", "sector": "Tecnología\nMovilidad\nSeguridad laboral", "producto": "", "contacto": "", "cargo": "", "telefonos": [], "webs": [], "correos": [], "ubicacion": "Panamá, representantes en Maracaibo", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 49, "nombre": "SERTECPET", "sector": "Producción de gas y petróleo\nÁrea Industrial - Plantas\nFacilidades para gas, petróleo y servicio de levantamiento artificial\nProyectos IPCM\nEnergías limpias\nMinería responsible", "producto": "Equipos para extracción de petróleo, información de fondo en tiempo real", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+593 2395 4900", "nombre": "", "cargo": ""}], "webs": ["www.sertecpet.com"], "correos": ["info@sertecpet.com"], "ubicacion": "Quito - Ecuador", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 50, "nombre": "OCTG", "sector": "Tuberías para la industria petrolera", "producto": "", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+576053610441", "nombre": "", "cargo": ""}], "webs": [], "correos": ["vzla@cspgroup.com"], "ubicacion": "Colombia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 51, "nombre": "Dislubinca", "sector": "Lubricantes Inca", "producto": "", "contacto": "Edward Bermúdez", "cargo": "Asesor Industrial", "telefonos": [{"telefono": "+584246058730", "nombre": "Edward Bermúdez", "cargo": "Asesor Industrial"}], "webs": [], "correos": ["asesorindustrial@dislubinca.com"], "ubicacion": "Maracaibo, Zulia. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 52, "nombre": "Lukiven", "sector": "Maquinaria y repuestos industriales", "producto": "", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+582617001212", "nombre": "", "cargo": ""}, {"telefono": "+584140627992", "nombre": "", "cargo": ""}], "webs": ["www.lukiven.com"], "correos": [], "ubicacion": "Maracaibo, Zulia. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 53, "nombre": "SM Baralt", "sector": "Ingeniería, construcción y servicios para la industria petrolera.", "producto": "", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584121680883", "nombre": "", "cargo": ""}, {"telefono": "+584246075902", "nombre": "", "cargo": ""}], "webs": ["https://www.smbaralt.com/"], "correos": ["inversionessmbaralt@gmail.com", "info@smbaralt.com"], "ubicacion": "Baralt- Zulia, Venezuela.", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 54, "nombre": "AIECA", "sector": "Aduana y logística internacional", "producto": "Agenciamiento de aduana, Consolidación de carga, asesoría técnica, logística integral, servicio de almacén, tránsito aduanero internacional, servicio de transporte internacional, planificación de rutas de transporte marítimo, aéreo y terrestre.", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584127972529", "nombre": "", "cargo": ""}], "webs": ["www.aieca.com.ve"], "correos": ["info@aieca.com.ve"], "ubicacion": "Maracaibo, Zulia. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 55, "nombre": "Borges y Lawton", "sector": "Depacho de abogados", "producto": "Asesoría integral en materia laboral, ocupacional, corporativa, tributaria, marítima, auditoría legal.", "contacto": "", "cargo": "", "telefonos": [], "webs": [], "correos": [], "ubicacion": "Maracaibo\nCiudad Ojeda", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 56, "nombre": "Repsol", "sector": "Compañía energética que aporta soluciones al hogar y la movilidad", "producto": "Energía", "contacto": "", "cargo": "", "telefonos": [], "webs": ["www.repsol.com"], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 57, "nombre": "Metalkor", "sector": "Ingeniería de confiabilidad", "producto": "", "contacto": "", "cargo": "", "telefonos": [], "webs": [], "correos": [], "ubicacion": "Anzoátegui", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 58, "nombre": "UPCO", "sector": "levantamiento artificial, optimización de pozos y automatización industrial.", "producto": "", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+58 (424) 670 6370", "nombre": "", "cargo": ""}], "webs": [], "correos": ["salesvzla@upcoglobal.com"], "ubicacion": "Maracaibo", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 59, "nombre": "Ramona's lonch", "sector": "Comida casera diaria al vacío", "producto": "", "contacto": "Marcia Medina", "cargo": "Gerente general", "telefonos": [{"telefono": "+584146434977", "nombre": "Marcia Medina", "cargo": "Gerente general"}, {"telefono": "+584246286700", "nombre": "", "cargo": ""}, {"telefono": "+584146591534", "nombre": "", "cargo": ""}], "webs": ["www.ramonaslonch.com"], "correos": [], "ubicacion": "Costa Oriental del Lago", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 60, "nombre": "Rodelca", "sector": "Fabrica de torres de enfriamiento y plantas de tratamiento de agua", "producto": "", "contacto": "Ing Mario Pifalo", "cargo": "Gerente general", "telefonos": [{"telefono": "+584143593831", "nombre": "Ing Mario Pifalo", "cargo": "Gerente general"}], "webs": ["www.rodelca.com.ve"], "correos": ["ventastorresrodelca@gmail.com"], "ubicacion": "Los Guayos, Carabobo. Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 61, "nombre": "SIMCA", "sector": "Soluciones integrales", "producto": "Balsas", "contacto": "Ing. Heli J. Fernández", "cargo": "Gerente de Operaciones", "telefonos": [{"telefono": "+582817004716", "nombre": "Ing. Heli J. Fernández", "cargo": "Gerente de Operaciones"}, {"telefono": "+584123022540", "nombre": "", "cargo": ""}], "webs": [], "correos": ["heli@simcaoline.com"], "ubicacion": "Barcelona, Anzoátegui. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 62, "nombre": "Conaval", "sector": "Servicios marinos", "producto": "Propulsores de azimut, motores marinos, sistemas de propulsión, controles, cajas de cambios, para nuevas aplicaciones o remodelaciones.", "contacto": "Luis Castillo", "cargo": "Sales manager", "telefonos": [{"telefono": "+19542961343", "nombre": "Luis Castillo", "cargo": "Sales manager"}, {"telefono": "+1 954 801 5907", "nombre": "", "cargo": ""}, {"telefono": "+58 414 167 1718", "nombre": "", "cargo": ""}], "webs": ["www.conaval-csm.com"], "correos": ["conaval@hotmail.com", "conavalmarine@gmail.com"], "ubicacion": "Florida, USA\nMaracaibo, Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 63, "nombre": "Meyers group", "sector": "Servicios marítimos (transporte de cargas, armadores y operaciones)\nConstrucción\nServicios agropecuarios\nSuministros marítimos", "producto": "", "contacto": "Paola Velasco", "cargo": "Analista comercial", "telefonos": [{"telefono": "+584126220344", "nombre": "Paola Velasco", "cargo": "Analista comercial"}, {"telefono": "+5072823800", "nombre": "", "cargo": ""}], "webs": ["www.meyersgrp.com"], "correos": ["paola.velasco@meyersgrp.com", "recepcion@meyersgrp.com"], "ubicacion": "C. de Panamá. Panamá", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 64, "nombre": "M&C", "sector": "Construcciones y servicios", "producto": "", "contacto": "Ing Adrian Medina", "cargo": "Gerente de operaciones", "telefonos": [{"telefono": "+584146129377", "nombre": "Ing Adrian Medina", "cargo": "Gerente de operaciones"}], "webs": [], "correos": ["amedinamyc@gmail.com", "constyservmc@gmail.com"], "ubicacion": "", "servicio_interes": "Brochure en celular", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 65, "nombre": "Kalule", "sector": "Construcciones, servicios y montajes", "producto": "Construcción y rehabilitación de todo tipo de obras y ámbito civil, muy integrada también en el ámbito eléctrico", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584124402904 +584146726437", "nombre": "", "cargo": ""}], "webs": [], "correos": ["construccionesfialule@gmail.com"], "ubicacion": "Casigua el Cubo. Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 66, "nombre": "Zic", "sector": "Obras de ingeniería", "producto": "Tendido de gasoductos y oleoductos\nInstalaciones petroleras y petroquímicas\nObras civiles\nObras marítimas (diques, muelles, dársenas, tendidos submarinos, astilleros navales e insfraestructuras terrestres portuarias)\nMovimientos de tierra\nElectricidad e instrumentación\nIngeniería, Procura y construcción\nConstrucción y mantenimiento de muelles\nProyectos on shore / Off shore", "contacto": "Jorge Riera", "cargo": "Gerente general", "telefonos": [{"telefono": "+584148380173", "nombre": "Jorge Riera", "cargo": "Gerente general"}], "webs": ["https://www.zic.com.ve/"], "correos": ["jriera@zic.com.ve"], "ubicacion": "Zulia\nAnzoátegui\nFlorida", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 67, "nombre": "INMARVENCO", "sector": "Industrias marítimas venezolana de construcciones", "producto": "Obras Mecánicas\nObras civiles\nTransporte Terrestre\nTransporte marítimo\nOperaciones de buceo e ingeniería sub marina\nActividades en tierra y costa afuera", "contacto": "Francisco Domingo", "cargo": "Gerente general", "telefonos": [{"telefono": "+584143617005", "nombre": "Francisco Domingo", "cargo": "Gerente general"}], "webs": ["https://inv.com.ve/"], "correos": ["fdomingo@inv.com.ve"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 68, "nombre": "Contables, Boyer León y asociados", "sector": "Contabilidad", "producto": "Odoo erp\nContabilidad\nauditoría", "contacto": "Francisco Boyer\nAdriana Parra", "cargo": "CEO\nGrowth and quality", "telefonos": [{"telefono": "+584146511919", "nombre": "Francisco Boyer\nAdriana Parra", "cargo": "CEO\nGrowth and quality"}, {"telefono": "+584126610279", "nombre": "", "cargo": ""}, {"telefono": "+584146741200", "nombre": "", "cargo": ""}], "webs": ["www.contablesag.com"], "correos": ["francisco.boyer@contablesag.com", "info@contablesag.com"], "ubicacion": "Maracaibo, Zulia. Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 69, "nombre": "SABCO", "sector": "Aseguramiento técnico y gobernanza estratégica para proyectos complejos", "producto": "", "contacto": "Pedro Sabino", "cargo": "Strategic advisor /  Project director", "telefonos": [], "webs": ["www.sabco.consulting"], "correos": ["psabino@sabco.consulting"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 70, "nombre": "Álvaro R. Cárdenas Medina", "sector": "Abogado maritimista", "producto": "", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584140144274", "nombre": "", "cargo": ""}, {"telefono": "+14079735638", "nombre": "", "cargo": ""}], "webs": [], "correos": ["venezuelaasesoresmaritimos@gmail.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 71, "nombre": "ISFERRCA", "sector": "Ferretería industrial", "producto": "", "contacto": "Henry Lubo", "cargo": "", "telefonos": [{"telefono": "+584146684095", "nombre": "Henry Lubo", "cargo": ""}, {"telefono": "+584146426512", "nombre": "", "cargo": ""}], "webs": [], "correos": ["hlsupplyca@hotmail.com", "isferrca@gmail.com", "presupuestos.isferrca@outlook.com"], "ubicacion": "Calle 10 Sierra Maestra, Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 72, "nombre": "Grupo Uniclima", "sector": "Soluciones integrales de aire acondicionado", "producto": "Equipos , proyectos e instalaciones de aire acondicionado, capacitación técnica", "contacto": "Ing. Jean Manuel Quero", "cargo": "Ejecutivo de ventas Maracaibo", "telefonos": [{"telefono": "+584246394233", "nombre": "Ing. Jean Manuel Quero", "cargo": "Ejecutivo de ventas Maracaibo"}], "webs": ["www.uniclima.net"], "correos": ["ventasoccidente@uniclima.net"], "ubicacion": "Caracas, Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 73, "nombre": "Gerenpro", "sector": "Perforación direccional", "producto": "", "contacto": "Mariagrazia Mata", "cargo": "Ingeniero", "telefonos": [{"telefono": "+584221757051", "nombre": "Mariagrazia Mata", "cargo": "Ingeniero"}], "webs": ["www.gerenpro.org"], "correos": ["mmata@gerenpro.org", "info@gerenpro.org"], "ubicacion": "Bella vista, av 3g. Maracaibo, Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 74, "nombre": "REMAX", "sector": "Agente en bienes raíces", "producto": "", "contacto": "Dayan River", "cargo": "Agente en bienes raíces", "telefonos": [{"telefono": "+584146321046", "nombre": "Dayan River", "cargo": "Agente en bienes raíces"}, {"telefono": "+584146340076", "nombre": "", "cargo": ""}], "webs": [], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 75, "nombre": "Maga Linares", "sector": "Agente en bienes raíces", "producto": "", "contacto": "Maga Linares", "cargo": "Agente en bienes raíces", "telefonos": [{"telefono": "+584246252617", "nombre": "Maga Linares", "cargo": "Agente en bienes raíces"}], "webs": ["www.tuinversionseguraintl.com/agent/magalyasesora"], "correos": [], "ubicacion": "", "servicio_interes": "En digital, inmuebles disponibles", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 76, "nombre": "Bancamiga", "sector": "General / Sin Sector", "producto": "", "contacto": "Isabel Ferreira\nGabriela Mercado", "cargo": "VP banca energía y petróleo", "telefonos": [{"telefono": "+584125760553", "nombre": "Isabel Ferreira\nGabriela Mercado", "cargo": "VP banca energía y petróleo"}, {"telefono": "+584128211870", "nombre": "", "cargo": ""}], "webs": [], "correos": ["isabel.ferreira@bancamiga.com", "gabriela.mercado@bancamiga.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 77, "nombre": "D'Kolores Sierra Maestra", "sector": "Tienda de pinturas", "producto": "", "contacto": "Ing. Dali Pacheco", "cargo": "Gerente técnico", "telefonos": [{"telefono": "+584143647102", "nombre": "Ing. Dali Pacheco", "cargo": "Gerente técnico"}], "webs": ["www.latiendadelpintor.com"], "correos": ["ltp_sierramaestra@hotmail.com"], "ubicacion": "Sierra Maestra. Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 78, "nombre": "DISAMOCA", "sector": "Tienda de pinturas", "producto": "Pinturas domésticas, industriales, institucionales", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584146728811", "nombre": "", "cargo": ""}], "webs": [], "correos": [], "ubicacion": "Av 10. Entre calles 72 y 73", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 79, "nombre": "Esteva corporativo", "sector": "Papelería", "producto": "Papelería y oficina\nArtículos de limpieza\nMantenimiento\nComputación\nConsumibles\nArtículos escolares\nCafetería\nDeporte\nDesechable\nMaterial POP\nUniforme escolar\nUniforme empresarial", "contacto": "", "cargo": "", "telefonos": [], "webs": ["www.papeleriaesteva.com"], "correos": ["estevainstitucional@gmail.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 80, "nombre": "AQUAPROSCA & INPROSVECA", "sector": "General / Sin Sector", "producto": "Diseño y ejecución de obras civiles\nVenta y mantenimiento de plantas eléctricas\nInversores y baterias\nMotores eléctricos nuevos, reparación y mantenimiento\nReparación y mantenimiento de Equipos marinos\nVenta de montacargas\nVenta, arrendamiento y repuestos para maquinaria pesada", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584146107071", "nombre": "", "cargo": ""}, {"telefono": "+584149660126", "nombre": "", "cargo": ""}, {"telefono": "+584120753340", "nombre": "", "cargo": ""}], "webs": [], "correos": ["aquaprosca@gmail.com"], "ubicacion": "Maracaibo. Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 81, "nombre": "Pasantías URBE", "sector": "General / Sin Sector", "producto": "", "contacto": "Dra Adinora Oquendo", "cargo": "Directora de pasantías", "telefonos": [{"telefono": "+584120795914", "nombre": "Dra Adinora Oquendo", "cargo": "Directora de pasantías"}], "webs": [], "correos": ["aoquendo@urbe.edu"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 82, "nombre": "SEPAC", "sector": "Especialistas en Infraestructura Vial", "producto": "", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+582127823781", "nombre": "", "cargo": ""}], "webs": [], "correos": ["info@sepac.com.ve"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 83, "nombre": "Royal Purple", "sector": "Lubricantes industriales", "producto": "Lubricación para equipos críticos, producción, transporte y procesamiento de petróleo y gas", "contacto": "Kim Scanlon", "cargo": "", "telefonos": [{"telefono": "9493579402", "nombre": "Kim Scanlon", "cargo": ""}], "webs": [], "correos": ["k.Scanlon@royalpurpleind.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 84, "nombre": "Renault", "sector": "Concesionario", "producto": "", "contacto": "Agustín Rincón", "cargo": "", "telefonos": [{"telefono": "+584220228317", "nombre": "Agustín Rincón", "cargo": ""}], "webs": [], "correos": [], "ubicacion": "Maracaibo", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 85, "nombre": "Maritime contractors", "sector": "Servicios petroleros especializada en perforación", "producto": "Perforación\nRehabilitación\nSoporte operacional", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+582659105206", "nombre": "", "cargo": ""}], "webs": ["www.maritime-contractors.com"], "correos": ["info@maritime-contractors.com"], "ubicacion": "Ciudad Ojeda", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 86, "nombre": "Ferrari crane", "sector": "Fabricación y distribución de grúas y equipos de izamientos", "producto": "", "contacto": "María Urdaneta", "cargo": "Gerente comercial", "telefonos": [{"telefono": "+584220426479", "nombre": "María Urdaneta", "cargo": "Gerente comercial"}], "webs": ["www.ferraricrane.com"], "correos": ["mariaurdaneta@ferraricrane.com"], "ubicacion": "Carretera Lara – Zulia, Punta Iguana Sur. Maracaibo – Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 87, "nombre": "ROCA", "sector": "Control de plagas", "producto": "Control de plagas, manejo integrado de plagas, barrera preventiva y monitoreo", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584247290461", "nombre": "", "cargo": ""}], "webs": [], "correos": [], "ubicacion": "Edif. 5 de julio, piso 4, local 11D.", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 88, "nombre": "CAF Engineering", "sector": "Gestión Total de Costos para Proyectos Complejos", "producto": "", "contacto": "Annie M. Fuenmayor F.", "cargo": "LATAM Business developer", "telefonos": [{"telefono": "+584146671076", "nombre": "Annie M. Fuenmayor F.", "cargo": "LATAM Business developer"}], "webs": ["www.caf-corporation.com"], "correos": ["annie.fuenmayor@caf-corporation.com"], "ubicacion": "Cordoba, España", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 89, "nombre": "Global company", "sector": "General / Sin Sector", "producto": "", "contacto": "Daniel González", "cargo": "Gerente general", "telefonos": [{"telefono": "+584246809588", "nombre": "Daniel González", "cargo": "Gerente general"}], "webs": [], "correos": ["danielg@globalcompanyve.com"], "ubicacion": "La Concepción. Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 90, "nombre": "Sinterca", "sector": "Suministros e instalación de aislantes térmicos", "producto": "", "contacto": "Oswaldo Hernández", "cargo": "", "telefonos": [{"telefono": "+584146122543", "nombre": "Oswaldo Hernández", "cargo": ""}, {"telefono": "+582617611273", "nombre": "", "cargo": ""}], "webs": [], "correos": ["sinterca2008@gmail.com"], "ubicacion": "San Fco. Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 91, "nombre": "WLS", "sector": "General / Sin Sector", "producto": "Flete internacional\nCargas proyecto\nGestión aduanera\nAlmacenaje y distribución\nProcura", "contacto": "Wilfredo Rojas", "cargo": "Vicepresidente de negocios", "telefonos": [{"telefono": "+584241101654", "nombre": "Wilfredo Rojas", "cargo": "Vicepresidente de negocios"}], "webs": [], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 92, "nombre": "Rusticos La Mundial", "sector": "Concesionario multimarca", "producto": "Vehículos marca JEEP, DODGE, RAM, MOPAR", "contacto": "Mario Reyes", "cargo": "Gerente de ventas", "telefonos": [{"telefono": "+584146583202", "nombre": "Mario Reyes", "cargo": "Gerente de ventas"}], "webs": [], "correos": ["gerenteventas@rusticoslamundial.com"], "ubicacion": "Tierra negra, Maracaibo. Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 93, "nombre": "Totaltubos", "sector": "Suministro de tuberías y productos siderúrgicos", "producto": "", "contacto": "Franco Colella", "cargo": "Ingeniero", "telefonos": [{"telefono": "+584123226229", "nombre": "Franco Colella", "cargo": "Ingeniero"}, {"telefono": "+19176987899", "nombre": "", "cargo": ""}], "webs": ["www.totaltubos.com"], "correos": ["francolella1@totaltubos.com"], "ubicacion": "Caracas, Venezuela", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 94, "nombre": "Global company", "sector": "Pinturas", "producto": "", "contacto": "", "cargo": "", "telefonos": [], "webs": [], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 95, "nombre": "Traducción técnica certificada", "sector": "Traducción de documentos", "producto": "Contratos, manuales y estudios ambientales", "contacto": "Dr Edwing Marval", "cargo": "", "telefonos": [{"telefono": "+584140687509", "nombre": "Dr Edwing Marval", "cargo": ""}, {"telefono": "+14073074566", "nombre": "", "cargo": ""}], "webs": [], "correos": ["marvalawtranslations@gmail.com"], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 96, "nombre": "Protocolo Amatistas", "sector": "General / Sin Sector", "producto": "", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584244662694", "nombre": "", "cargo": ""}], "webs": [], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 97, "nombre": "Ven line", "sector": "Tuberías, servicios y productos especializados para la industria petrolera", "producto": "Intervención de pozos\nSoluciones químicas\nLaboratorio de análisis y desarrollo\nTecnologías\nCalidad, seguridad y ambiente", "contacto": "", "cargo": "", "telefonos": [], "webs": [], "correos": [], "ubicacion": "", "servicio_interes": "Brochure GESCA, Brochure Mudven, Tecnologías OSI (en celular)", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 98, "nombre": "Revinca", "sector": "Tuberías de PEAD", "producto": "Tuberías de PEAD\nAsesoría técnica\nServicios de soldadura por termofusión", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584122884242", "nombre": "", "cargo": ""}, {"telefono": "+584122266178", "nombre": "", "cargo": ""}, {"telefono": "+584122266179 (whatsapp ventas)", "nombre": "", "cargo": ""}, {"telefono": "+582614118834", "nombre": "", "cargo": ""}], "webs": ["www.revinca.com"], "correos": ["ventas@revinca.com"], "ubicacion": "Zona Industrial, 2da etapa. San Fco, Zulia", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}, {"id": 99, "nombre": "Agente de bienes raíces", "sector": "Centro industrial mebo - Mene grande", "producto": "", "contacto": "", "cargo": "", "telefonos": [{"telefono": "+584146374282", "nombre": "", "cargo": ""}, {"telefono": "+584146109680", "nombre": "", "cargo": ""}], "webs": [], "correos": [], "ubicacion": "", "servicio_interes": "", "estatus": "Pendiente Contactar", "siguiente_accion": "", "fecha_contacto": "", "valoracion": "", "notas": "", "attachments": []}];
+
+        let companies = JSON.parse(localStorage.getItem('companies_crm_phone_contact_v1')) || initialCompanies;
+        let selectedIds = new Set();
+
+        function saveToStorage() {
+            localStorage.setItem('companies_crm_phone_contact_v1', JSON.stringify(companies));
+            updateSectorDropdown();
+            renderData();
+        }
+
+        function updateSectorDropdown() {
+            const sectorSelect = document.getElementById('filterSector');
+            const currentVal = sectorSelect.value;
+            
+            const sectorsSet = new Set();
+            companies.forEach(c => {
+                if (c.sector) sectorsSet.add(c.sector);
+            });
+            const sortedSectors = Array.from(sectorsSet).sort();
+
+            let options = '<option value="">Todos los Sectores</option>';
+            sortedSectors.forEach(s => {
+                options += `<option value="${s}">${s}</option>`;
+            });
+            sectorSelect.innerHTML = options;
+            sectorSelect.value = currentVal;
+        }
+
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'Pendiente Contactar': return '<span class="badge-status status-pendiente">Pendiente Contactar</span>';
+                case 'Contactado - En espera': return '<span class="badge-status status-espera">Contactado - En espera</span>';
+                case 'En negociación': return '<span class="badge-status status-negociacion">En negociación</span>';
+                case 'Evaluado - Apto': return '<span class="badge-status status-apto">Evaluado - Apto</span>';
+                case 'Descartado': return '<span class="badge-status status-descartado">Descartado</span>';
+                default: return '<span class="badge-status bg-slate-200 text-slate-700">Sin Estado</span>';
+            }
+        }
+
+        function getStars(rating) {
+            if (!rating) return '<span class="text-xs text-slate-400">Sin calificar</span>';
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                stars += i <= rating ? '<i class="fa-solid fa-star text-amber-400 text-xs"></i>' : '<i class="fa-regular fa-star text-slate-300 text-xs"></i>';
+            }
+            return `<div class="flex items-center gap-1">${stars} <span class="text-xs font-semibold text-slate-600">(${rating}/5)</span></div>`;
+        }
+
+        function getFilteredCompanies() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filterSector = document.getElementById('filterSector').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+            const filterRating = document.getElementById('filterRating').value;
+
+            return companies.filter(c => {
+                const matchSearch = (c.nombre || '').toLowerCase().includes(search) ||
+                                    (c.producto || '').toLowerCase().includes(search) ||
+                                    (c.sector || '').toLowerCase().includes(search) ||
+                                    (c.contacto || '').toLowerCase().includes(search) ||
+                                    (c.telefonos && c.telefonos.some(t => (t.nombre || '').toLowerCase().includes(search) || (t.telefono || '').includes(search)));
+                const matchSector = filterSector === '' || c.sector === filterSector;
+                const matchStatus = filterStatus === '' || c.estatus === filterStatus;
+                const matchRating = filterRating === '' || String(c.valoracion) === String(filterRating);
+                return matchSearch && matchSector && matchStatus && matchRating;
+            });
+        }
+
+        function renderData() {
+            const grid = document.getElementById('companyGrid');
+            const filtered = getFilteredCompanies();
+
+            document.getElementById('kpi-total').innerText = companies.length;
+            document.getElementById('kpi-pendiente').innerText = companies.filter(c => c.estatus === 'Pendiente Contactar').length;
+            document.getElementById('kpi-negociacion').innerText = companies.filter(c => c.estatus === 'En negociación').length;
+            document.getElementById('kpi-apto').innerText = companies.filter(c => c.estatus === 'Evaluado - Apto').length;
+            document.getElementById('kpi-descartado').innerText = companies.filter(c => c.estatus === 'Descartado').length;
+
+            updateSelectedBar();
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-lg border">
+                    <i class="fa-solid fa-folder-open text-4xl mb-3"></i>
+                    <p>No se encontraron empresas con los criterios seleccionados.</p>
+                </div>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(c => {
+                const isSelected = selectedIds.has(c.id);
+                
+                // Render multiple phones with name and cargo
+                const telefonosList = (c.telefonos && c.telefonos.length > 0) ? c.telefonos.map(item => `
+                    <div class="bg-emerald-50/60 p-2 rounded border border-emerald-100 space-y-1">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-phone text-emerald-600 w-4"></i>
+                            <a href="tel:${item.telefono}" class="font-bold text-emerald-800 hover:underline">${item.telefono || 'Sin número'}</a>
+                        </div>
+                        ${(item.nombre || item.cargo) ? `
+                            <div class="text-[11px] text-slate-600 pl-6 flex items-center gap-1.5 flex-wrap">
+                                <i class="fa-solid fa-user text-slate-400"></i>
+                                <span class="font-semibold text-slate-800">${item.nombre || 'Sin nombre'}</span>
+                                ${item.cargo ? `<span class="text-slate-400">(${item.cargo})</span>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('') : '';
+
+                // Render multiple emails
+                const correosList = (c.correos && c.correos.length > 0) ? c.correos.map(email => `
+                    <div class="flex items-center gap-2 truncate">
+                        <i class="fa-solid fa-envelope text-sky-500 w-4"></i>
+                        <a href="mailto:${email}" class="text-sky-600 hover:underline truncate">${email}</a>
+                    </div>
+                `).join('') : '';
+
+                // Render multiple webs
+                const websList = (c.webs && c.webs.length > 0) ? c.webs.map(web => `
+                    <div class="flex items-center gap-2 truncate">
+                        <i class="fa-solid fa-globe text-amber-500 w-4"></i>
+                        <a href="${web.startsWith('http') ? web : 'http://' + web}" target="_blank" class="text-amber-600 hover:underline truncate">${web}</a>
+                    </div>
+                `).join('') : '';
+
+                return `
+                <div class="bg-white rounded-xl shadow-sm border ${isSelected ? 'border-amber-500 ring-2 ring-amber-400' : 'border-slate-200'} hover:shadow-md transition flex flex-col justify-between overflow-hidden relative">
+                    <div class="p-5">
+                        <div class="flex justify-between items-start gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" onchange="toggleSelect(${c.id}, this.checked)" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 cursor-pointer">
+                                <span class="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">${c.sector || 'General'}</span>
+                            </div>
+                            ${getStatusBadge(c.estatus)}
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-900 leading-snug">${c.id}. ${c.nombre}</h3>
+                        ${getStars(c.valoracion)}
+                        
+                        <p class="text-xs text-slate-600 mt-3 line-clamp-3 bg-slate-50 p-2 rounded border border-slate-100">
+                            <strong>Servicios/Productos:</strong> ${c.producto || 'No especificado'}
+                        </p>
+
+                        <div class="mt-4 space-y-2 text-xs text-slate-600">
+                            ${telefonosList}
+                            ${correosList}
+                            ${websList}
+                            ${c.ubicacion ? `
+                                <div class="flex items-center gap-2 pt-1">
+                                    <i class="fa-solid fa-location-dot text-rose-400 w-4"></i>
+                                    <span>${c.ubicacion}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        ${c.siguiente_accion ? `
+                            <div class="mt-3 text-xs bg-amber-50 p-2 rounded border border-amber-200 text-amber-800">
+                                <i class="fa-solid fa-clock text-amber-600 mr-1"></i> <strong>Sig. Acción:</strong> ${c.siguiente_accion}
+                            </div>
+                        ` : ''}
+
+                        ${c.attachments && c.attachments.length > 0 ? `
+                            <div class="mt-3 pt-3 border-t">
+                                <span class="text-[11px] font-bold text-slate-500 uppercase block mb-1">Archivos Adjuntos (${c.attachments.length}):</span>
+                                <div class="flex flex-wrap gap-1">
+                                    ${c.attachments.map(att => `
+                                        <a href="${att.data}" download="${att.name}" class="inline-flex items-center gap-1 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded border">
+                                            <i class="${att.type.includes('pdf') ? 'fa-solid fa-file-pdf text-rose-500' : 'fa-solid fa-file-image text-emerald-500'}"></i>
+                                            <span class="max-w-[120px] truncate">${att.name}</span>
+                                        </a>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="bg-slate-50 px-5 py-3 border-t flex justify-end gap-2">
+                        <button onclick="editCompany(${c.id})" class="px-3 py-1 bg-white hover:bg-slate-100 border text-slate-700 rounded text-xs font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-pen text-amber-500"></i> Editar
+                        </button>
+                        <button onclick="deleteCompany(${c.id})" class="px-2 py-1 bg-white hover:bg-rose-50 border border-slate-200 text-rose-600 rounded text-xs">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        // Dynamic phone, email and web input handlers in modal
+        function addPhoneField(telefono = '', nombre = '', cargo = '') {
+            const container = document.getElementById('phonesContainer');
+            const div = document.createElement('div');
+            div.className = 'bg-white p-3 rounded border border-emerald-200 space-y-2 relative shadow-sm';
+            div.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold text-emerald-800 uppercase mb-0.5">Teléfono / WhatsApp</label>
+                        <input type="text" placeholder="+58 414-0000000" value="${telefono}" class="phone-num-input w-full p-1.5 border rounded text-xs focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <button type="button" onclick="this.closest('div.bg-white').remove()" class="mt-4 px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded text-xs"><i class="fa-solid fa-trash"></i></button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Nombre de Contacto</label>
+                        <input type="text" placeholder="Ej. Juan Pérez" value="${nombre}" class="phone-name-input w-full p-1.5 border rounded text-xs focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Cargo / Función</label>
+                        <input type="text" placeholder="Ej. Gerente de Ventas" value="${cargo}" class="phone-cargo-input w-full p-1.5 border rounded text-xs focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function addEmailField(value = '') {
+            const container = document.getElementById('emailsContainer');
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-2';
+            div.innerHTML = `
+                <input type="email" placeholder="correo@empresa.com" value="${value}" class="email-input flex-1 p-2 border rounded text-sm focus:ring-2 focus:ring-sky-500">
+                <button type="button" onclick="this.parentElement.remove()" class="px-2.5 py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded text-xs"><i class="fa-solid fa-trash"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
+        function addWebField(value = '') {
+            const container = document.getElementById('websContainer');
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-2';
+            div.innerHTML = `
+                <input type="text" placeholder="www.empresa.com" value="${value}" class="web-input flex-1 p-2 border rounded text-sm focus:ring-2 focus:ring-amber-500">
+                <button type="button" onclick="this.parentElement.remove()" class="px-2.5 py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded text-xs"><i class="fa-solid fa-trash"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
+        function openSectorModal() {
+            const counts = {};
+            companies.forEach(c => {
+                const s = c.sector || 'General / Sin Sector';
+                counts[s] = (counts[s] || 0) + 1;
+            });
+
+            const sortedSectors = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+            const total = companies.length;
+
+            const content = sortedSectors.map(([sector, count]) => {
+                const pct = ((count / total) * 100).toFixed(1);
+                return `
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-col gap-2 hover:bg-sky-50/50 transition cursor-pointer" onclick="filterBySector('${sector.replace(/'/g, "\'")}')">
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="font-bold text-slate-800">${sector}</span>
+                            <span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-semibold">${count} empresa${count > 1 ? 's' : ''} (${pct}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div class="bg-sky-600 h-2 rounded-full" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('sectorSummaryContent').innerHTML = `
+                <p class="text-xs text-slate-500 mb-2">Haz clic en cualquier sector para filtrar automáticamente las empresas en el directorio principal.</p>
+                <div class="space-y-2">${content}</div>
+            `;
+            document.getElementById('sectorModal').classList.remove('hidden');
+        }
+
+        function closeSectorModal() {
+            document.getElementById('sectorModal').classList.add('hidden');
+        }
+
+        function filterBySector(sector) {
+            document.getElementById('filterSector').value = sector;
+            closeSectorModal();
+            renderData();
+        }
+
+        function toggleSelect(id, isChecked) {
+            if (isChecked) {
+                selectedIds.add(id);
+            } else {
+                selectedIds.delete(id);
+            }
+            renderData();
+        }
+
+        function toggleSelectAll(isChecked) {
+            const visibleCompanies = getFilteredCompanies();
+            visibleCompanies.forEach(c => {
+                if (isChecked) {
+                    selectedIds.add(c.id);
+                } else {
+                    selectedIds.delete(c.id);
+                }
+            });
+            renderData();
+        }
+
+        function updateSelectedBar() {
+            const count = selectedIds.size;
+            document.getElementById('selectedCount').innerText = `${count} seleccionadas`;
+            const btnDelete = document.getElementById('btnDeleteSelected');
+            btnDelete.disabled = count === 0;
+
+            const visibleCompanies = getFilteredCompanies();
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (visibleCompanies.length > 0 && visibleCompanies.every(c => selectedIds.has(c.id))) {
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.checked = false;
+            }
+        }
+
+        function deleteSelected() {
+            const count = selectedIds.size;
+            if (count === 0) return;
+
+            if (confirm(`¿Está seguro de eliminar las ${count} empresas seleccionadas?`)) {
+                companies = companies.filter(c => !selectedIds.has(c.id));
+                selectedIds.clear();
+                saveToStorage();
+            }
+        }
+
+        function deleteCompany(id) {
+            if (confirm('¿Está seguro de eliminar este registro de empresa?')) {
+                companies = companies.filter(c => c.id !== id);
+                selectedIds.delete(id);
+                saveToStorage();
+            }
+        }
+
+        function openModal(isEdit = false) {
+            document.getElementById('modalTitle').innerText = isEdit ? 'Editar Empresa' : 'Añadir Nueva Empresa';
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('companyForm').reset();
+            document.getElementById('empresaId').value = '';
+            document.getElementById('phonesContainer').innerHTML = '';
+            document.getElementById('emailsContainer').innerHTML = '';
+            document.getElementById('websContainer').innerHTML = '';
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        async function saveCompany(e) {
+            e.preventDefault();
+            const id = document.getElementById('empresaId').value;
+            const fileInput = document.getElementById('fileInput');
+            const files = Array.from(fileInput.files);
+            let attachments = [];
+
+            for (let file of files) {
+                const base64 = await readFileAsBase64(file);
+                attachments.push({
+                    name: file.name,
+                    type: file.type,
+                    data: base64
+                });
+            }
+
+            const existingCompany = companies.find(c => String(c.id) === String(id));
+            if (existingCompany && existingCompany.attachments) {
+                attachments = [...existingCompany.attachments, ...attachments];
+            }
+
+            // Gather multiple phones with name and cargo
+            const phoneDivs = document.querySelectorAll('#phonesContainer > div');
+            const telefonos = [];
+            phoneDivs.forEach(div => {
+                const tel = div.querySelector('.phone-num-input').value.trim();
+                const nom = div.querySelector('.phone-name-input').value.trim();
+                const car = div.querySelector('.phone-cargo-input').value.trim();
+                if (tel || nom || car) {
+                    telefonos.push({
+                        telefono: tel,
+                        nombre: nom,
+                        cargo: car
+                    });
+                }
+            });
+
+            // Gather multiple emails
+            const correos = Array.from(document.querySelectorAll('.email-input'))
+                                .map(input => input.value.trim())
+                                .filter(v => v !== '');
+
+            // Gather multiple webs
+            const webs = Array.from(document.querySelectorAll('.web-input'))
+                            .map(input => input.value.trim())
+                            .filter(v => v !== '');
+
+            const companyData = {
+                id: id ? parseInt(id) : Date.now(),
+                nombre: document.getElementById('nombre').value,
+                sector: document.getElementById('sector').value,
+                producto: document.getElementById('producto').value,
+                telefonos: telefonos,
+                correos: correos,
+                webs: webs,
+                servicio_interes: document.getElementById('servicio_interes').value,
+                ubicacion: document.getElementById('ubicacion').value,
+                estatus: document.getElementById('estatus').value,
+                fecha_contacto: document.getElementById('fecha_contacto').value,
+                valoracion: document.getElementById('valoracion').value,
+                siguiente_accion: document.getElementById('siguiente_accion').value,
+                notas: document.getElementById('notas').value,
+                attachments: attachments
+            };
+
+            if (id) {
+                const index = companies.findIndex(c => String(c.id) === String(id));
+                companies[index] = companyData;
+            } else {
+                companies.unshift(companyData);
+            }
+
+            saveToStorage();
+            closeModal();
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function editCompany(id) {
+            const c = companies.find(item => item.id === id);
+            if (!c) return;
+
+            document.getElementById('empresaId').value = c.id;
+            document.getElementById('nombre').value = c.nombre || '';
+            document.getElementById('sector').value = c.sector || '';
+            document.getElementById('producto').value = c.producto || '';
+            document.getElementById('servicio_interes').value = c.servicio_interes || '';
+            document.getElementById('ubicacion').value = c.ubicacion || '';
+            document.getElementById('estatus').value = c.estatus || 'Pendiente Contactar';
+            document.getElementById('fecha_contacto').value = c.fecha_contacto || '';
+            document.getElementById('valoracion').value = c.valoracion || '';
+            document.getElementById('siguiente_accion').value = c.siguiente_accion || '';
+            document.getElementById('notas').value = c.notas || '';
+
+            // Populate multiple phones with name and cargo
+            const phonesContainer = document.getElementById('phonesContainer');
+            phonesContainer.innerHTML = '';
+            if (c.telefonos && c.telefonos.length > 0) {
+                c.telefonos.forEach(item => {
+                    addPhoneField(item.telefono || '', item.nombre || '', item.cargo || '');
+                });
+            } else {
+                // If legacy c.telefono or c.contacto existed
+                addPhoneField('', '', '');
+            }
+
+            // Populate multiple emails
+            const emailsContainer = document.getElementById('emailsContainer');
+            emailsContainer.innerHTML = '';
+            if (c.correos && c.correos.length > 0) {
+                c.correos.forEach(email => addEmailField(email));
+            } else {
+                addEmailField('');
+            }
+
+            // Populate multiple webs
+            const websContainer = document.getElementById('websContainer');
+            websContainer.innerHTML = '';
+            if (c.webs && c.webs.length > 0) {
+                c.webs.forEach(web => addWebField(web));
+            } else {
+                addWebField('');
+            }
+
+            openModal(true);
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(companies, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "directorio_1_99_telefonos_con_nombre_cargo.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        updateSectorDropdown();
+        renderData();
+    </script>
+</body>
+</html>
