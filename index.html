@@ -7,10 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Firebase SDK (Compat) -->
+    <!-- Firebase SDK (Compat - Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 
     <style>
         .badge-status { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 600; }
@@ -216,17 +215,15 @@
                     <div id="websContainer" class="space-y-2"></div>
                 </div>
 
-                <!-- Módulo de Documentos PDF -->
+                <!-- Módulo de Enlaces PDF (Drive, etc.) -->
                 <div class="bg-rose-50/50 p-4 rounded-lg border border-rose-200">
-                    <label class="block text-xs font-bold text-rose-900 uppercase mb-2">Documentos PDF Adjuntos</label>
-                    <div id="pdfListContainer" class="space-y-2 mb-3"></div>
-                    <div>
-                        <label class="inline-flex items-center gap-2 px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-bold cursor-pointer transition">
-                            <i class="fa-solid fa-file-pdf"></i> Seleccionar Documentos PDF
-                            <input type="file" id="pdfFileInput" accept="application/pdf" multiple class="hidden" onchange="handlePDFSelection(event)">
-                        </label>
-                        <span id="pdfFileCount" class="text-xs text-slate-500 ml-2">Ningún PDF nuevo seleccionado</span>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold text-rose-900 uppercase">Documentos PDF (Enlaces)</label>
+                        <button type="button" onclick="addPdfField()" class="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Añadir Enlace PDF
+                        </button>
                     </div>
+                    <div id="pdfsContainer" class="space-y-3"></div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -297,15 +294,12 @@
             appId: "1:88406867650:web:d37179a44062443f37055b"
         };
 
-        // Initialize Firebase
+        // Initialize Firebase Firestore
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const storage = firebase.storage();
 
         let companies = [];
         let selectedIds = new Set();
-        let currentExistingPDFs = [];
-        let selectedNewPDFs = [];
 
         // Realtime Listener using Firestore onSnapshot
         function initRealtimeListener() {
@@ -463,9 +457,9 @@
                         <span class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Documentos PDF (${c.attachments.length}):</span>
                         <div class="space-y-1">
                             ${c.attachments.map(doc => `
-                                <a href="${doc.url}" target="_blank" class="flex items-center gap-2 text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 p-1.5 rounded border border-rose-200 transition truncate">
+                                <a href="${doc.url.startsWith('http') ? doc.url : 'http://' + doc.url}" target="_blank" class="flex items-center gap-2 text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 p-1.5 rounded border border-rose-200 transition truncate">
                                     <i class="fa-solid fa-file-pdf text-rose-600 shrink-0"></i>
-                                    <span class="truncate font-medium">${doc.name}</span>
+                                    <span class="truncate font-medium">${doc.name || 'Documento PDF'}</span>
                                     <i class="fa-solid fa-arrow-up-right-from-square text-[10px] ml-auto shrink-0"></i>
                                 </a>
                             `).join('')}
@@ -578,42 +572,24 @@
             container.appendChild(div);
         }
 
-        // Manejo de Selección de PDFs Nuevos
-        function handlePDFSelection(event) {
-            const files = Array.from(event.target.files);
-            selectedNewPDFs = files;
-            const countSpan = document.getElementById('pdfFileCount');
-            if (files.length > 0) {
-                countSpan.innerText = `${files.length} archivo(s) nuevo(s) seleccionado(s)`;
-            } else {
-                countSpan.innerText = `Ningún PDF nuevo seleccionado`;
-            }
-        }
-
-        // Renderizar PDFs existentes en el modal
-        function renderExistingPDFsInModal() {
-            const container = document.getElementById('pdfListContainer');
-            if (currentExistingPDFs.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-500 italic">No hay documentos PDF subidos previamente.</p>`;
-                return;
-            }
-
-            container.innerHTML = currentExistingPDFs.map((doc, index) => `
-                <div class="flex items-center justify-between bg-white p-2 rounded border border-rose-200 text-xs shadow-sm">
-                    <a href="${doc.url}" target="_blank" class="flex items-center gap-2 text-rose-700 hover:underline font-semibold truncate flex-1">
-                        <i class="fa-solid fa-file-pdf text-rose-600 shrink-0"></i>
-                        <span class="truncate">${doc.name}</span>
-                    </a>
-                    <button type="button" onclick="removeExistingPDF(${index})" class="px-2 py-1 text-rose-600 hover:bg-rose-50 rounded ml-2">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
+        function addPdfField(name = '', url = '') {
+            const container = document.getElementById('pdfsContainer');
+            const div = document.createElement('div');
+            div.className = 'bg-white p-3 rounded border border-rose-200 space-y-2 relative shadow-sm';
+            div.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <div class="flex-1">
+                        <label class="block text-[10px] font-bold text-rose-800 uppercase mb-0.5">Nombre del Documento</label>
+                        <input type="text" placeholder="Ej. Brochure Principal 2026" value="${name}" class="pdf-name-input w-full p-1.5 border rounded text-xs focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <button type="button" onclick="this.closest('div.bg-white').remove()" class="mt-4 px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded text-xs"><i class="fa-solid fa-trash"></i></button>
                 </div>
-            `).join('');
-        }
-
-        function removeExistingPDF(index) {
-            currentExistingPDFs.splice(index, 1);
-            renderExistingPDFsInModal();
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">Enlace URL del PDF (Google Drive, etc.)</label>
+                    <input type="text" placeholder="https://drive.google.com/file/d/..." value="${url}" class="pdf-url-input w-full p-1.5 border rounded text-xs focus:ring-2 focus:ring-rose-500">
+                </div>
+            `;
+            container.appendChild(div);
         }
 
         function openSectorModal() {
@@ -699,10 +675,7 @@
             document.getElementById('phonesContainer').innerHTML = '';
             document.getElementById('emailsContainer').innerHTML = '';
             document.getElementById('websContainer').innerHTML = '';
-            document.getElementById('pdfFileInput').value = '';
-            document.getElementById('pdfFileCount').innerText = 'Ningún PDF nuevo seleccionado';
-            currentExistingPDFs = [];
-            selectedNewPDFs = [];
+            document.getElementById('pdfsContainer').innerHTML = '';
             document.getElementById('modal').classList.add('hidden');
         }
 
@@ -717,23 +690,14 @@
             btnText.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
 
             try {
-                // 1. Subir los nuevos archivos PDF seleccionados a Firebase Storage
-                const uploadedNewAttachments = [];
-                for (let i = 0; i < selectedNewPDFs.length; i++) {
-                    const file = selectedNewPDFs[i];
-                    const timestamp = Date.now();
-                    const storageRef = storage.ref(`pdfs_empresas/${newId}/${timestamp}_${file.name}`);
-                    const uploadTask = await storageRef.put(file);
-                    const downloadURL = await uploadTask.ref.getDownloadURL();
-                    uploadedNewAttachments.push({
-                        name: file.name,
-                        url: downloadURL,
-                        path: storageRef.fullPath
-                    });
-                }
-
-                // Combinar archivos existentes retenidos con los nuevos subidos
-                const finalAttachments = [...currentExistingPDFs, ...uploadedNewAttachments];
+                // Recoger los enlaces PDF del formulario
+                const pdfDivs = document.querySelectorAll('#pdfsContainer > div');
+                const attachments = [];
+                pdfDivs.forEach(div => {
+                    const name = div.querySelector('.pdf-name-input').value.trim();
+                    const url = div.querySelector('.pdf-url-input').value.trim();
+                    if (name || url) attachments.push({ name: name || 'Documento PDF', url: url });
+                });
 
                 const phoneDivs = document.querySelectorAll('#phonesContainer > div');
                 const telefonos = [];
@@ -762,7 +726,7 @@
                     valoracion: document.getElementById('valoracion').value,
                     siguiente_accion: document.getElementById('siguiente_accion').value,
                     notas: document.getElementById('notas').value,
-                    attachments: finalAttachments
+                    attachments: attachments
                 };
 
                 if (originalId && parseInt(originalId) !== newId) {
@@ -796,10 +760,6 @@
             document.getElementById('siguiente_accion').value = c.siguiente_accion || '';
             document.getElementById('notas').value = c.notas || '';
 
-            currentExistingPDFs = c.attachments ? [...c.attachments] : [];
-            selectedNewPDFs = [];
-            renderExistingPDFsInModal();
-
             const phonesContainer = document.getElementById('phonesContainer');
             phonesContainer.innerHTML = '';
             if (c.telefonos && c.telefonos.length > 0) {
@@ -822,6 +782,14 @@
                 c.webs.forEach(web => addWebField(web));
             } else {
                 addWebField('');
+            }
+
+            const pdfsContainer = document.getElementById('pdfsContainer');
+            pdfsContainer.innerHTML = '';
+            if (c.attachments && c.attachments.length > 0) {
+                c.attachments.forEach(item => addPdfField(item.name || '', item.url || ''));
+            } else {
+                addPdfField('', '');
             }
 
             openModal(true);
